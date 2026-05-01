@@ -1,0 +1,72 @@
+package org.example.placement_drive_management.repository;
+
+import org.example.placement_drive_management.entity.ApplicationRound;
+import org.example.placement_drive_management.entity.Applications;
+import org.example.placement_drive_management.service.ApplicationRoundProjection;
+import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import org.springframework.data.domain.Pageable;
+import java.util.List;
+import java.util.Optional;
+
+public interface ApplicationRoundRepository extends JpaRepository<ApplicationRound, Long> {
+    @Query("""
+    SELECT 
+        a.id as applicationId,
+        s.rollNo as studentRollNo,
+        CONCAT(s.name, ' ', s.surname) as studentName,
+        sp.department as department,
+        sp.currentCgpa as currentCgpa,
+        s.mobileNo as mobileNo,
+        s.email as email,
+        ar.status as status,
+        ar.score as score,
+        ar.feedback as feedback,
+        sp.resumeUrl as resume
+    FROM applicationRound ar
+    JOIN ar.application a
+    JOIN a.student s
+    JOIN a.studentProfile sp
+    JOIN ar.driveRound dr
+    WHERE dr.drive.driveId = :driveId
+    AND dr.roundNumber = :roundNo
+""")
+    Page<ApplicationRoundProjection> findApplicantsProjected(
+            @Param("driveId") String driveId,
+            @Param("roundNo") Integer roundNo,
+            Pageable pageable);
+
+
+    List<ApplicationRound> findByDriveRound_RoundNumber(Integer roundNumber);
+    Optional<ApplicationRound> findByApplication_IdAndDriveRound_RoundNumber(
+            Long applicationId, Integer roundNumber);
+
+    @Query("SELECT ar FROM applicationRound ar " +
+            "WHERE ar.driveRound.drive.driveId = :driveId " +
+            "AND ar.driveRound.roundNumber = :roundNo " +
+            "AND ar.score IS NOT NULL " +
+            "ORDER BY ar.score DESC")
+    Page<ApplicationRound> findScoredStudentsOrderByScore(
+            @Param("driveId") String driveId,
+            @Param("roundNo") Integer roundNo,
+            Pageable pageable);
+
+
+
+    @Query("""
+    SELECT ar
+    FROM applicationRound ar
+    JOIN FETCH ar.application a
+    JOIN FETCH a.student s
+    JOIN FETCH ar.driveRound dr
+    WHERE dr.drive.driveId = :driveId
+    AND s.rollNo = :rollNo
+""")
+    Page<ApplicationRound> findAllRoundDetails(
+            String driveId,
+            String rollNumber,
+            Pageable pageable);
+}
